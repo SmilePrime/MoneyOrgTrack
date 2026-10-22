@@ -4,24 +4,35 @@ skinparam packageStyle rectangle
 
 actor "руководитель" as manager
 actor "сотрудник" as employee
+actor "администратор" as admin
 
+usecase "Удалить пользователя" as UC9
+usecase "Добавить пользователя" as UC8
+usecase "Вход систему" as UC7
+usecase "Вход в систему" as UC10
 usecase "Просмотр списка доходов" as UC1
 usecase "Просмотр списка расходов" as UC2
 usecase "Изменение суммы доходов/расходов" as UC3
 usecase "Добавление/\nУдаление пункта доходов" as UC4
 usecase "Расчет доходов\nЗа месяц" as UC5
 usecase "Сохранение информации" as UC6
+usecase "Вход в систему" as UC11
 
-manager --> UC1
-manager --> UC2
-manager --> UC3
-manager --> UC4
-manager --> UC5
-manager --> UC6
+admin -- UC11
+UC11 -- UC9
+UC11 -- UC8 
 
-employee --> UC1
-employee --> UC2
-employee --> UC5
+manager -- UC7
+UC7 -- UC1
+UC7 -- UC2
+UC7 -- UC3
+UC7 -- UC4
+UC7 -- UC5
+UC7 -- UC6
 
+employee -- UC10
+UC10 -- UC1
+UC10 -- UC2
+UC10 -- UC5
 
 @enduml
