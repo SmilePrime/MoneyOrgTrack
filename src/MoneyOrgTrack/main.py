@@ -10,7 +10,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     __package__ = "src.MoneyOrgTrack"
 
-from .auth import login, register_ui
+from .auth import login
 from .database import initialize_database
 from .menu import editor_menu, viewer_menu
 from .services.auth_service import ADMIN, EMPLOYEE, MANAGER
@@ -22,7 +22,6 @@ def main() -> None:
     while True:
         print("\n===== MoneyOrgTrack =====")
         print("1. Вход")
-        print("2. Регистрация сотрудника")
         print("0. Выход")
 
         choice = input("Выберите действие: ").strip()
@@ -37,8 +36,6 @@ def main() -> None:
                 viewer_menu(user)
             else:
                 print("У пользователя не назначена роль")
-        elif choice == "2":
-            register_ui()
         elif choice == "0":
             print("До свидания!")
             break
