@@ -1,4 +1,4 @@
-"""Репозиторий финансовых операций (CRUD и агрегаты)."""
+"""Репозиторий FinancialItem — пунктов доходов и расходов."""
 
 from __future__ import annotations
 
@@ -6,44 +6,45 @@ from ..database import get_connection
 from ..models import Operation
 
 _SELECT = """
-    SELECT o.operation_id, o.category_id, o.amount, o.operation_date,
-           o.description, o.created_by, c.name, c.kind, u.login
-    FROM operations o
-    JOIN categories c ON c.category_id = o.category_id
-    JOIN users u ON u.user_id = o.created_by
+    SELECT i.itemID, i.userID, i.itemTypeID, i.name, i.amount,
+           i.createdAt, i.updatedAt, t.name AS type_name, u.login
+    FROM FinancialItem i
+    JOIN ItemType t ON t.itemTypeID = i.itemTypeID
+    JOIN "User" u ON u.userID = i.userID
 """
 
 
 def _map(row) -> Operation:
     return Operation(
-        operation_id=row["operation_id"],
-        category_id=row["category_id"],
+        operation_id=row["itemID"],
+        user_id=row["userID"],
+        item_type_id=row["itemTypeID"],
+        name=row["name"],
         amount=row["amount"],
-        operation_date=row["operation_date"],
-        description=row["description"],
-        created_by=row["created_by"],
-        category_name=row["name"],
-        category_kind=row["kind"],
+        created_at=row["createdAt"],
+        updated_at=row["updatedAt"],
+        category_name=row["type_name"],
+        category_kind=row["type_name"],
         author_login=row["login"],
     )
 
 
 def create(
-    category_id: int,
+    item_type_id: int,
+    name: str,
     amount: float,
-    operation_date: str,
-    description: str,
-    created_by: int,
+    created_at: str,
+    user_id: int,
 ) -> int:
     connection = get_connection()
     try:
         cursor = connection.execute(
             """
-            INSERT INTO operations
-                (category_id, amount, operation_date, description, created_by)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO FinancialItem
+                (itemTypeID, name, amount, createdAt, updatedAt, userID)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (category_id, amount, operation_date, description, created_by),
+            (item_type_id, name, amount, created_at, created_at, user_id),
         )
         connection.commit()
         return int(cursor.lastrowid)
@@ -55,7 +56,7 @@ def get_by_id(operation_id: int) -> Operation | None:
     connection = get_connection()
     try:
         row = connection.execute(
-            _SELECT + " WHERE o.operation_id = ?", (operation_id,)
+            _SELECT + " WHERE i.itemID = ?", (operation_id,)
         ).fetchone()
         return _map(row) if row else None
     finally:
@@ -63,26 +64,26 @@ def get_by_id(operation_id: int) -> Operation | None:
 
 
 def get_all(
-    kind: str | None = None,
+    item_type_id: int | None = None,
     year: int | None = None,
     month: int | None = None,
 ) -> list[Operation]:
     conditions: list[str] = []
     parameters: list[object] = []
-    if kind:
-        conditions.append("c.kind = ?")
-        parameters.append(kind)
+    if item_type_id is not None:
+        conditions.append("i.itemTypeID = ?")
+        parameters.append(item_type_id)
     if year is not None:
-        conditions.append("substr(o.operation_date, 1, 4) = ?")
+        conditions.append("substr(i.createdAt, 1, 4) = ?")
         parameters.append(f"{year:04d}")
     if month is not None:
-        conditions.append("substr(o.operation_date, 6, 2) = ?")
+        conditions.append("substr(i.createdAt, 6, 2) = ?")
         parameters.append(f"{month:02d}")
 
     sql = _SELECT
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
-    sql += " ORDER BY o.operation_date DESC, o.operation_id DESC"
+    sql += " ORDER BY i.createdAt DESC, i.itemID DESC"
 
     connection = get_connection()
     try:
@@ -94,20 +95,21 @@ def get_all(
 
 def update(
     operation_id: int,
-    category_id: int,
+    item_type_id: int,
+    name: str,
     amount: float,
-    operation_date: str,
-    description: str,
+    created_at: str,
 ) -> bool:
     connection = get_connection()
     try:
         cursor = connection.execute(
             """
-            UPDATE operations
-            SET category_id = ?, amount = ?, operation_date = ?, description = ?
-            WHERE operation_id = ?
+            UPDATE FinancialItem
+            SET itemTypeID = ?, name = ?, amount = ?, createdAt = ?,
+                updatedAt = datetime('now')
+            WHERE itemID = ?
             """,
-            (category_id, amount, operation_date, description, operation_id),
+            (item_type_id, name, amount, created_at, operation_id),
         )
         connection.commit()
         return cursor.rowcount > 0
@@ -119,7 +121,11 @@ def update_amount(operation_id: int, amount: float) -> bool:
     connection = get_connection()
     try:
         cursor = connection.execute(
-            "UPDATE operations SET amount = ? WHERE operation_id = ?",
+            """
+            UPDATE FinancialItem
+            SET amount = ?, updatedAt = datetime('now')
+            WHERE itemID = ?
+            """,
             (amount, operation_id),
         )
         connection.commit()
@@ -132,7 +138,7 @@ def delete(operation_id: int) -> bool:
     connection = get_connection()
     try:
         cursor = connection.execute(
-            "DELETE FROM operations WHERE operation_id = ?", (operation_id,)
+            "DELETE FROM FinancialItem WHERE itemID = ?", (operation_id,)
         )
         connection.commit()
         return cursor.rowcount > 0
@@ -141,18 +147,18 @@ def delete(operation_id: int) -> bool:
 
 
 def get_totals(year: int, month: int) -> tuple[float, float]:
-    """Возвращает пару (доходы, расходы) за указанный месяц."""
+    """Возвращает пару (доходы, расходы) за месяц."""
     connection = get_connection()
     try:
         row = connection.execute(
             """
             SELECT
-                COALESCE(SUM(CASE WHEN c.kind = 'income' THEN o.amount ELSE 0 END), 0) AS income,
-                COALESCE(SUM(CASE WHEN c.kind = 'expense' THEN o.amount ELSE 0 END), 0) AS expense
-            FROM operations o
-            JOIN categories c ON c.category_id = o.category_id
-            WHERE substr(o.operation_date, 1, 4) = ?
-              AND substr(o.operation_date, 6, 2) = ?
+                COALESCE(SUM(CASE WHEN t.name = 'income' THEN i.amount ELSE 0 END), 0) AS income,
+                COALESCE(SUM(CASE WHEN t.name = 'expense' THEN i.amount ELSE 0 END), 0) AS expense
+            FROM FinancialItem i
+            JOIN ItemType t ON t.itemTypeID = i.itemTypeID
+            WHERE substr(i.createdAt, 1, 4) = ?
+              AND substr(i.createdAt, 6, 2) = ?
             """,
             (f"{year:04d}", f"{month:02d}"),
         ).fetchone()

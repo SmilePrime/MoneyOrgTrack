@@ -1,4 +1,4 @@
-"""Репозиторий справочника ролей."""
+"""Репозиторий справочника ролей (сущность Role)."""
 
 from __future__ import annotations
 
@@ -7,13 +7,13 @@ from ..models import Role
 
 
 def _map(row) -> Role:
-    return Role(role_id=row["role_id"], name=row["name"])
+    return Role(role_id=row["roleID"], name=row["name"])
 
 
 def get_all() -> list[Role]:
     connection = get_connection()
     try:
-        rows = connection.execute("SELECT role_id, name FROM roles ORDER BY role_id").fetchall()
+        rows = connection.execute("SELECT roleID, name FROM Role ORDER BY roleID").fetchall()
         return [_map(row) for row in rows]
     finally:
         connection.close()
@@ -23,7 +23,7 @@ def get_by_id(role_id: int) -> Role | None:
     connection = get_connection()
     try:
         row = connection.execute(
-            "SELECT role_id, name FROM roles WHERE role_id = ?", (role_id,)
+            "SELECT roleID, name FROM Role WHERE roleID = ?", (role_id,)
         ).fetchone()
         return _map(row) if row else None
     finally:
@@ -34,7 +34,7 @@ def get_by_name(name: str) -> Role | None:
     connection = get_connection()
     try:
         row = connection.execute(
-            "SELECT role_id, name FROM roles WHERE name = ?", (name,)
+            "SELECT roleID, name FROM Role WHERE name = ?", (name,)
         ).fetchone()
         return _map(row) if row else None
     finally:

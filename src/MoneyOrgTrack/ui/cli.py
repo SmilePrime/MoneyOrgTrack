@@ -87,12 +87,12 @@ def _choose_category(kind: str | None = None) -> int | None:
 
 def _categories_menu(user: User) -> None:
     while True:
-        print("\n===== Пункты доходов и расходов =====")
+        print("\n===== Типы доходов и расходов (ItemType) =====")
         print("1. Показать все")
         print("2. Показать доходы")
         print("3. Показать расходы")
         print("4. Добавить")
-        print("5. Изменить")
+        print("5. Переименовать")
         print("6. Удалить")
         print("0. Назад")
         choice = _prompt("Выберите действие: ")
@@ -105,22 +105,20 @@ def _categories_menu(user: User) -> None:
             elif choice == "3":
                 _print_categories(finance.list_categories("expense"))
             elif choice == "4":
-                name = _prompt("Название: ")
                 kind = _prompt("Тип (income/expense): ")
-                category = finance.add_category(user, name, kind)
-                print(f"Категория #{category.category_id} добавлена")
+                item_type = finance.add_category(user, kind)
+                print(f"Тип #{item_type.category_id} добавлен")
             elif choice == "5":
-                category_id = _read_int("ID категории: ")
+                category_id = _read_int("ID типа: ")
                 if category_id is not None:
-                    name = _prompt("Новое название: ")
-                    kind = _prompt("Новый тип (income/expense): ")
-                    finance.update_category(user, category_id, name, kind)
-                    print("Категория обновлена")
+                    name = _prompt("Новое название (income/expense): ")
+                    finance.update_category(user, category_id, name)
+                    print("Тип обновлён")
             elif choice == "6":
-                category_id = _read_int("ID категории: ")
+                category_id = _read_int("ID типа: ")
                 if category_id is not None:
                     finance.delete_category(user, category_id)
-                    print("Категория удалена")
+                    print("Тип удалён")
             elif choice == "0":
                 return
             else:
@@ -204,13 +202,13 @@ def _operations_menu(user: User) -> None:
             print(f"Ошибка: {error}")
 
 
-def _report() -> None:
+def _report(user: User) -> None:
     year = _read_int("Год: ")
     month = _read_int("Месяц: ")
     if year is None or month is None:
         return
     try:
-        report = finance.monthly_report(year, month)
+        report = finance.monthly_report(year, month, user)
     except FinanceError as error:
         print(f"Ошибка: {error}")
         return
@@ -286,7 +284,7 @@ def _view_menu(user: User) -> None:
         if choice == "1":
             _print_operations(finance.list_operations())
         elif choice == "2":
-            _report()
+            _report(user)
         elif choice == "3":
             _do_export()
         elif choice == "0":
@@ -298,8 +296,8 @@ def _view_menu(user: User) -> None:
 def _editor_menu(user: User) -> None:
     while True:
         print(f"\n===== Главное меню ({user.role_name}: {user.full_name}) =====")
-        print("1. Пункты доходов и расходов")
-        print("2. Операции")
+        print("1. Типы доходов и расходов")
+        print("2. Пункты доходов и расходов")
         print("3. Отчёт за месяц")
         print("4. Экспорт данных")
         if user.role_name == ADMIN:
@@ -312,7 +310,7 @@ def _editor_menu(user: User) -> None:
         elif choice == "2":
             _operations_menu(user)
         elif choice == "3":
-            _report()
+            _report(user)
         elif choice == "4":
             _do_export()
         elif choice == "5" and user.role_name == ADMIN:

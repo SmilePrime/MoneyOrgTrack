@@ -40,10 +40,12 @@ def initialize_database(db_path: Path | str | None = None) -> None:
 def reset_database(db_path: Path | str | None = None) -> None:
     """Удаляет все таблицы и создаёт базу заново (для разработки и тестов)."""
     drop_script = """
-    DROP TABLE IF EXISTS operations;
-    DROP TABLE IF EXISTS categories;
-    DROP TABLE IF EXISTS users;
-    DROP TABLE IF EXISTS roles;
+    DROP TABLE IF EXISTS MonthlyReport;
+    DROP TABLE IF EXISTS OperationLog;
+    DROP TABLE IF EXISTS FinancialItem;
+    DROP TABLE IF EXISTS "User";
+    DROP TABLE IF EXISTS ItemType;
+    DROP TABLE IF EXISTS Role;
     """
     _execute_script(drop_script, db_path)
     initialize_database(db_path)

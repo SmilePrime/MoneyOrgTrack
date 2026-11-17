@@ -1,4 +1,4 @@
-"""Модель отчёта за месяц."""
+"""Модель MonthlyReport — сохранённый отчёт за месяц."""
 
 from __future__ import annotations
 
@@ -11,6 +11,10 @@ class MonthlyReport:
     month: int
     income: float
     expense: float
+    # Поля заполняются при чтении сохранённого отчёта из таблицы MonthlyReport.
+    report_id: int | None = None
+    user_id: int | None = None
+    created_at: str | None = None
 
     @property
     def profit(self) -> float:

@@ -1,24 +1,21 @@
-"""Репозиторий пунктов доходов и расходов (CRUD)."""
+"""Репозиторий справочника ItemType (тип дохода или расхода)."""
 
 from __future__ import annotations
 
 from ..database import get_connection
-from ..models import Category
+from ..models import ItemType
 
 
-def _map(row) -> Category:
-    return Category(
-        category_id=row["category_id"],
-        name=row["name"],
-        kind=row["kind"],
-    )
+def _map(row) -> ItemType:
+    return ItemType(item_type_id=row["itemTypeID"], name=row["name"])
 
 
-def create(name: str, kind: str) -> int:
+def create(name: str, kind: str | None = None) -> int:
+    """Создаёт тип. Параметр kind оставлен для совместимости со старым UI."""
     connection = get_connection()
     try:
         cursor = connection.execute(
-            "INSERT INTO categories (name, kind) VALUES (?, ?)", (name, kind)
+            "INSERT INTO ItemType (name) VALUES (?)", (name,)
         )
         connection.commit()
         return int(cursor.lastrowid)
@@ -26,55 +23,50 @@ def create(name: str, kind: str) -> int:
         connection.close()
 
 
-def get_by_id(category_id: int) -> Category | None:
+def get_by_id(item_type_id: int) -> ItemType | None:
     connection = get_connection()
     try:
         row = connection.execute(
-            "SELECT category_id, name, kind FROM categories WHERE category_id = ?",
-            (category_id,),
+            "SELECT itemTypeID, name FROM ItemType WHERE itemTypeID = ?", (item_type_id,)
         ).fetchone()
         return _map(row) if row else None
     finally:
         connection.close()
 
 
-def get_by_name(name: str) -> Category | None:
+def get_by_name(name: str) -> ItemType | None:
     connection = get_connection()
     try:
         row = connection.execute(
-            "SELECT category_id, name, kind FROM categories WHERE name = ?", (name,)
+            "SELECT itemTypeID, name FROM ItemType WHERE name = ?", (name,)
         ).fetchone()
         return _map(row) if row else None
     finally:
         connection.close()
 
 
-def get_all(kind: str | None = None) -> list[Category]:
+def get_all(name: str | None = None) -> list[ItemType]:
     connection = get_connection()
     try:
-        if kind:
+        if name:
             rows = connection.execute(
-                """
-                SELECT category_id, name, kind FROM categories
-                WHERE kind = ? ORDER BY category_id
-                """,
-                (kind,),
+                "SELECT itemTypeID, name FROM ItemType WHERE name = ? ORDER BY itemTypeID",
+                (name,),
             ).fetchall()
         else:
             rows = connection.execute(
-                "SELECT category_id, name, kind FROM categories ORDER BY category_id"
+                "SELECT itemTypeID, name FROM ItemType ORDER BY itemTypeID"
             ).fetchall()
         return [_map(row) for row in rows]
     finally:
         connection.close()
 
 
-def update(category_id: int, name: str, kind: str) -> bool:
+def update(item_type_id: int, name: str, kind: str | None = None) -> bool:
     connection = get_connection()
     try:
         cursor = connection.execute(
-            "UPDATE categories SET name = ?, kind = ? WHERE category_id = ?",
-            (name, kind, category_id),
+            "UPDATE ItemType SET name = ? WHERE itemTypeID = ?", (name, item_type_id)
         )
         connection.commit()
         return cursor.rowcount > 0
@@ -82,11 +74,11 @@ def update(category_id: int, name: str, kind: str) -> bool:
         connection.close()
 
 
-def delete(category_id: int) -> bool:
+def delete(item_type_id: int) -> bool:
     connection = get_connection()
     try:
         cursor = connection.execute(
-            "DELETE FROM categories WHERE category_id = ?", (category_id,)
+            "DELETE FROM ItemType WHERE itemTypeID = ?", (item_type_id,)
         )
         connection.commit()
         return cursor.rowcount > 0

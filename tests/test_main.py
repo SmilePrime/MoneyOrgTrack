@@ -10,8 +10,14 @@ import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from src.MoneyOrgTrack.database import get_connection, reset_database
-from src.MoneyOrgTrack.repositories import category_repository, operation_repository, user_repository
+from src.MoneyOrgTrack.database import get_connection, initialize_database, reset_database
+from src.MoneyOrgTrack.repositories import (
+    category_repository,
+    monthly_report_repository,
+    operation_log_repository,
+    operation_repository,
+    user_repository,
+)
 from src.MoneyOrgTrack.services import (
     AuthError,
     FinanceError,
@@ -46,19 +52,35 @@ class MoneyOrgTrackTestCase(unittest.TestCase):
         self.assertIsNotNone(user)
         return user
 
-    def test_schema_and_seed_data(self) -> None:
+    def test_schema_matches_er_diagram_and_seed_data(self) -> None:
         connection = get_connection()
         try:
             counts = {
-                table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-                for table in ("roles", "users", "categories", "operations")
+                table: connection.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
+                for table in (
+                    "Role",
+                    "ItemType",
+                    "User",
+                    "FinancialItem",
+                    "OperationLog",
+                    "MonthlyReport",
+                )
             }
         finally:
             connection.close()
 
-        self.assertEqual(counts, {"roles": 3, "users": 3, "categories": 5, "operations": 8})
-        self.assertEqual(len(category_repository.get_all("income")), 2)
-        self.assertEqual(len(category_repository.get_all("expense")), 3)
+        self.assertEqual(
+            counts,
+            {
+                "Role": 3,
+                "ItemType": 2,
+                "User": 3,
+                "FinancialItem": 8,
+                "OperationLog": 3,
+                "MonthlyReport": 2,
+            },
+        )
+        self.assertEqual([item.name for item in category_repository.get_all()], ["income", "expense"])
 
     def test_password_hashing_and_authentication(self) -> None:
         encoded = hash_password("secret123", "fixed-salt")
@@ -67,6 +89,7 @@ class MoneyOrgTrackTestCase(unittest.TestCase):
 
         admin = self._user("admin")
         self.assertEqual(admin.role_name, "admin")
+        self.assertEqual(admin.full_name, "Администратор системы")
         self.assertEqual(authenticate("admin", "admin123").user_id, admin.user_id)
         self.assertIsNone(authenticate("admin", "wrong-password"))
         self.assertIsNone(authenticate("missing", "admin123"))
@@ -74,7 +97,7 @@ class MoneyOrgTrackTestCase(unittest.TestCase):
     def test_register_user_and_duplicate_check(self) -> None:
         created = register("new_employee", "pass12345", "Новый Сотрудник")
         self.assertEqual(created.role_name, "employee")
-        self.assertEqual(created.full_name, "Новый Сотрудник")
+        self.assertEqual(created.name, "Новый Сотрудник")
 
         with self.assertRaises(AuthError):
             register("new_employee", "pass12345", "Дубликат")
@@ -86,49 +109,68 @@ class MoneyOrgTrackTestCase(unittest.TestCase):
     def test_employee_cannot_change_data(self) -> None:
         employee = self._user("employee")
         with self.assertRaises(FinanceError):
-            self.finance.add_category(employee, "Новая категория", "income")
+            self.finance.add_category(employee, "income")
         with self.assertRaises(FinanceError):
             self.finance.add_operation(employee, 1, 1000, "2026-11-01")
         with self.assertRaises(FinanceError):
             self.finance.delete_operation(employee, 1)
 
-    def test_category_crud(self) -> None:
+    def test_item_type_crud(self) -> None:
         manager = self._user("manager")
-        category = self.finance.add_category(manager, "Дивиденды", "income")
-        self.assertEqual(category.kind, "income")
-
-        updated = self.finance.update_category(manager, category.category_id, "Дивиденды", "expense")
-        self.assertEqual(updated.kind, "expense")
-
         with self.assertRaises(FinanceError):
-            self.finance.delete_category(manager, 1)  # есть связанные операции
+            self.finance.add_category(manager, "Дивиденды")  # только income/expense
+        with self.assertRaises(FinanceError):
+            self.finance.add_category(manager, "income")  # уже существует
+        with self.assertRaises(FinanceError):
+            self.finance.delete_category(manager, 1)  # есть FinancialItem
 
-        self.finance.delete_category(manager, category.category_id)
-        self.assertIsNone(category_repository.get_by_id(category.category_id))
+        item_type_id = category_repository.create("custom")
+        self.assertEqual(category_repository.get_by_id(item_type_id).name, "custom")
+        self.assertTrue(category_repository.update(item_type_id, "updated"))
+        self.assertEqual(category_repository.get_by_id(item_type_id).name, "updated")
+        self.assertTrue(category_repository.delete(item_type_id))
+        self.assertIsNone(category_repository.get_by_id(item_type_id))
 
-    def test_operation_crud_and_monthly_report(self) -> None:
+    def test_financial_item_crud_report_and_logs(self) -> None:
         manager = self._user("manager")
 
-        report = self.finance.monthly_report(2026, 10)
+        report = self.finance.monthly_report(2026, 10, manager)
         self.assertEqual(report.income, 370000.0)
         self.assertEqual(report.expense, 63750.5)
         self.assertEqual(report.profit, 306249.5)
-
-        operation = self.finance.add_operation(
-            manager, 2, 15000.5, "2026-11-03", "Тестовая консультация"
+        # Повторный вызов обновляет существующую запись, а не создаёт новую.
+        self.finance.monthly_report(2026, 10, manager)
+        self.assertEqual(
+            len(
+                [
+                    item
+                    for item in monthly_report_repository.get_all()
+                    if (item.year, item.month) == (2026, 10)
+                    and item.user_id == manager.user_id
+                ]
+            ),
+            1,
         )
-        self.assertEqual(operation.category_name, "Консультационные услуги")
+
+        logs_before = len(operation_log_repository.get_all(limit=100))
+        operation = self.finance.add_operation(
+            manager, 1, 15000.5, "2026-11-03", "Тестовая консультация"
+        )
+        self.assertEqual(operation.name, "Тестовая консультация")
+        self.assertEqual(operation.description, "Тестовая консультация")
+        self.assertEqual(operation.operation_date, "2026-11-03")
+        self.assertEqual(len(operation_log_repository.get_all(limit=100)), logs_before + 1)
 
         updated = self.finance.update_amount(manager, operation.operation_id, 16000)
         self.assertEqual(updated.amount, 16000)
 
         edited = self.finance.update_operation(
-            manager, operation.operation_id, 4, 17000, "2026-11-04", "Изменённая операция"
+            manager, operation.operation_id, 2, 17000, "2026-11-04", "Изменённый пункт"
         )
         self.assertEqual(edited.category_kind, "expense")
-        self.assertEqual(edited.description, "Изменённая операция")
+        self.assertEqual(edited.name, "Изменённый пункт")
 
-        november = self.finance.monthly_report(2026, 11)
+        november = self.finance.monthly_report(2026, 11, manager)
         self.assertEqual(november.expense, 17000)
 
         self.finance.delete_operation(manager, operation.operation_id)
@@ -165,11 +207,9 @@ class MoneyOrgTrackTestCase(unittest.TestCase):
 
         yaml_text = paths["data.yaml"].read_text(encoding="utf-8")
         self.assertTrue(yaml_text.startswith("operations:\n  - operation_id:"))
-        self.assertIn('category: "Зарплата"', yaml_text)
+        self.assertIn('category: "income"', yaml_text)
 
     def test_database_initialization_is_idempotent(self) -> None:
-        from src.MoneyOrgTrack.database import initialize_database
-
         initialize_database()
         initialize_database()
         self.assertEqual(len(operation_repository.get_all()), 8)

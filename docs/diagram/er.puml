@@ -1,43 +1,65 @@
 @startuml
-title MoneyOrgTrack — ER-диаграмма базы данных
+title MoneyOrgTrack — ER-диаграмма (по скриншоту)
 
 hide circle
 skinparam linetype ortho
 
-entity ROLES {
-  * role_id : INTEGER <<PK>>
+entity Role {
+  * roleID : int <<PK>>
   --
-  * name : TEXT <<UNIQUE>>
+  * name : str
 }
 
-entity USERS {
-  * user_id : INTEGER <<PK>>
+entity ItemType {
+  * itemTypeID : int <<PK>>
   --
-  * login : TEXT <<UNIQUE>>
-  * password_hash : TEXT
-  * full_name : TEXT
-  * role_id : INTEGER <<FK>>
+  * name : str
 }
 
-entity CATEGORIES {
-  * category_id : INTEGER <<PK>>
+entity User {
+  * userID : int <<PK>>
   --
-  * name : TEXT <<UNIQUE>>
-  * kind : TEXT
+  * name : str
+  * login : str
+  * passwordHash : str
+  * roleID : int <<FK>>
 }
 
-entity OPERATIONS {
-  * operation_id : INTEGER <<PK>>
+entity FinancialItem {
+  * itemID : int <<PK>>
   --
-  * category_id : INTEGER <<FK>>
-  * amount : REAL
-  * operation_date : TEXT
-  * description : TEXT
-  * created_by : INTEGER <<FK>>
+  * userID : int <<FK>>
+  * itemTypeID : int <<FK>>
+  * name : str
+  * amount : decimal
+  * createdAt : datetime
+  * updatedAt : datetime
 }
 
-ROLES ||--o{ USERS : "назначает роль"
-USERS ||--o{ OPERATIONS : "создаёт"
-CATEGORIES ||--o{ OPERATIONS : "классифицирует"
+entity OperationLog {
+  * logID : int <<PK>>
+  --
+  * userID : int <<FK>>
+  * action : str
+  * details : str
+  * createdAt : datetime
+}
+
+entity MonthlyReport {
+  * reportID : int <<PK>>
+  --
+  * userID : int <<FK>>
+  * month : date
+  * incomeSum : decimal
+  * expenseSum : decimal
+  * profit : decimal
+  * createdAt : datetime
+}
+
+Role ||--o{ User : "имеет роли"
+ItemType ||--o{ FinancialItem : "классифицирует"
+User ||--o{ FinancialItem : "создаёт"
+User ||--o{ OperationLog : "журналирует"
+User ||--o{ MonthlyReport : "формирует"
 
 @enduml

@@ -1,4 +1,4 @@
-"""Модель пункта дохода или расхода."""
+"""Модель справочника ItemType (тип пункта дохода/расхода)."""
 
 from __future__ import annotations
 
@@ -15,11 +15,23 @@ KIND_LABELS = {
 
 
 @dataclass
-class Category:
-    category_id: int
+class ItemType:
+    item_type_id: int
     name: str
-    kind: str
+
+    # Свойства-алиасы сохраняют совместимость с кодом, который называл
+    # этот справочник "категориями".
+    @property
+    def category_id(self) -> int:
+        return self.item_type_id
+
+    @property
+    def kind(self) -> str:
+        return self.name
 
     @property
     def kind_label(self) -> str:
-        return KIND_LABELS.get(self.kind, self.kind)
+        return KIND_LABELS.get(self.name, self.name)
+
+
+Category = ItemType

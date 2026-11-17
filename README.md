@@ -93,48 +93,70 @@ python -m MoneyOrgTrack
 
 ## 4. База данных
 
-Таблицы:
+Схема построена по предоставленной ER-диаграмме. Таблицы:
 
-- `roles` — справочник ролей;
-- `users` — пользователи, ссылка на `roles`;
-- `categories` — пункты доходов/расходов с типом `income`/`expense`;
-- `operations` — операции, ссылки на `categories` и `users`.
+- `Role` — справочник ролей;
+- `ItemType` — типы пунктов (`income` / `expense`);
+- `User` — пользователи, ссылка на `Role`;
+- `FinancialItem` — пункты доходов и расходов, ссылки на `User` и `ItemType`;
+- `OperationLog` — журнал действий пользователей, ссылка на `User`;
+- `MonthlyReport` — сохранённые отчёты за месяц, ссылка на `User`.
 
-Связи: `roles 1—N users`, `users 1—N operations`, `categories 1—N operations`. Первичные ключи — `*_id`, внешние ключи объявлены в `schema.sql` с `PRAGMA foreign_keys = ON`.
+Связи: `Role 1—N User`, `User 1—N FinancialItem`, `ItemType 1—N FinancialItem`, `User 1—N OperationLog`, `User 1—N MonthlyReport`. Внешние ключи объявлены в `schema.sql` с `PRAGMA foreign_keys = ON`.
 
 ### ER-диаграмма
 
-Источник: [`docs/diagram/er.puml`](docs/diagram/er.puml).
+Оригинальный скриншот: [`docs/diagram/er.png`](docs/diagram/er.png), редактируемый источник: [`docs/diagram/er.puml`](docs/diagram/er.puml).
+
+![ER-диаграмма MoneyOrgTrack](docs/diagram/er.png)
 
 ```mermaid
 erDiagram
-    ROLES ||--o{ USERS : "назначает роль"
-    USERS ||--o{ OPERATIONS : "создаёт"
-    CATEGORIES ||--o{ OPERATIONS : "классифицирует"
+    Role ||--o{ User : "назначает роль"
+    ItemType ||--o{ FinancialItem : "классифицирует"
+    User ||--o{ FinancialItem : "создаёт"
+    User ||--o{ OperationLog : "журналирует"
+    User ||--o{ MonthlyReport : "формирует"
 
-    ROLES {
-        int role_id PK
+    Role {
+        int roleID PK
         string name UK
     }
-    USERS {
-        int user_id PK
+    ItemType {
+        int itemTypeID PK
+        string name UK
+    }
+    User {
+        int userID PK
+        string name
         string login UK
-        string password_hash
-        string full_name
-        int role_id FK
+        string passwordHash
+        int roleID FK
     }
-    CATEGORIES {
-        int category_id PK
-        string name UK
-        string kind
+    FinancialItem {
+        int itemID PK
+        int userID FK
+        int itemTypeID FK
+        string name
+        decimal amount
+        datetime createdAt
+        datetime updatedAt
     }
-    OPERATIONS {
-        int operation_id PK
-        int category_id FK
-        real amount
-        string operation_date
-        string description
-        int created_by FK
+    OperationLog {
+        int logID PK
+        int userID FK
+        string action
+        string details
+        datetime createdAt
+    }
+    MonthlyReport {
+        int reportID PK
+        int userID FK
+        date month
+        decimal incomeSum
+        decimal expenseSum
+        decimal profit
+        datetime createdAt
     }
 ```
 
