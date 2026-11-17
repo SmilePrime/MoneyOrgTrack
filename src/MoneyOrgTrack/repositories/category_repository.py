@@ -18,7 +18,7 @@ def create(name: str, kind: str | None = None) -> int:
             "INSERT INTO ItemType (name) VALUES (?)", (name,)
         )
         connection.commit()
-        return int(cursor.lastrowid)
+        return get_last_insert_id(connection)
     finally:
         connection.close()
 

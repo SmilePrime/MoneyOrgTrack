@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..database import get_connection
+from ..database import get_connection, get_last_insert_id
 from ..models import Operation
 
 _SELECT = """
@@ -47,7 +47,7 @@ def create(
             (item_type_id, name, amount, created_at, created_at, user_id),
         )
         connection.commit()
-        return int(cursor.lastrowid)
+        return get_last_insert_id(connection)
     finally:
         connection.close()
 

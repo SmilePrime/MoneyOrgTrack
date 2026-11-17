@@ -17,6 +17,12 @@ def get_connection() -> sqlite3.Connection:
     return connection
 
 
+def get_last_insert_id(connection: sqlite3.Connection) -> int:
+    """Возвращает ID последней вставки без использования cursor.lastrowid."""
+    row = connection.execute("SELECT last_insert_rowid()").fetchone()
+    return int(row[0])
+
+
 def initialize_database() -> None:
     """Создаёт таблицы и начальные данные, если база ещё не создана."""
     if DB_NAME.exists():

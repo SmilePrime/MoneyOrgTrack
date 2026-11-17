@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+# Позволяет запускать файл напрямую из IDE без ошибки relative import.
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    __package__ = "src.MoneyOrgTrack"
+
 from .auth import login, register_ui
 from .database import initialize_database
 from .menu import editor_menu, viewer_menu
