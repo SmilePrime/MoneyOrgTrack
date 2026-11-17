@@ -1,18 +1,6 @@
 # Python
 __pycache__/
 *.py[cod]
-*.egg-info/
-dist/
-build/
-
-# Virtual environments
-.venv/
-venv/
-
-# Test and tooling caches
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
 
 # Runtime data and generated exports
 data/

@@ -8,9 +8,11 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Iterable
 
-from ..config import get_output_dir
 from ..models import Operation
 from ..repositories import operation_repository
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_OUTPUT_DIR = _PROJECT_ROOT / "out"
 
 EXPORT_FIELDS: tuple[str, ...] = (
     "operation_id",
@@ -75,7 +77,6 @@ def _yaml_scalar(value: Any) -> str:
         return "true" if value else "false"
     if isinstance(value, (int, float)):
         return str(value)
-    # JSON-строка является корректной двойной кавычкой YAML.
     return json.dumps(str(value), ensure_ascii=False)
 
 
@@ -90,7 +91,7 @@ def _write_yaml(records: list[dict[str, Any]], path: Path) -> None:
 
 def export_data(output_dir: Path | str | None = None) -> dict[str, Path]:
     """Создаёт каталог out и четыре файла с текущими операциями."""
-    directory = Path(output_dir) if output_dir is not None else get_output_dir()
+    directory = Path(output_dir) if output_dir is not None else DEFAULT_OUTPUT_DIR
     directory.mkdir(parents=True, exist_ok=True)
 
     records = build_records()

@@ -1,19 +1,11 @@
-"""Консольный пользовательский интерфейс MoneyOrgTrack."""
+"""Консольные меню MoneyOrgTrack."""
 
 from __future__ import annotations
 
-from ..database import initialize_database
-from ..models import Category, Operation, User
-from ..repositories import user_repository
-from ..services import (
-    AuthError,
-    FinanceError,
-    FinanceService,
-    authenticate,
-    export_data,
-    register,
-)
-from ..services.auth import ADMIN, EMPLOYEE, MANAGER, ROLE_NAMES
+from .models import Category, Operation, User
+from .repositories import user_repository
+from .services import AuthError, FinanceError, FinanceService, export_data, register
+from .services.auth_service import ADMIN, ROLE_NAMES
 
 finance = FinanceService()
 
@@ -49,7 +41,9 @@ def _print_operations(operations: list[Operation]) -> None:
     print(f"\n{'ID':>4}  {'Дата':<12} {'Тип':<8} {'Сумма':>12}  Категория / описание")
     print("-" * 72)
     for operation in operations:
-        kind = _KIND_LABELS.get(operation.category_kind or "", operation.category_kind or "")
+        kind = _KIND_LABELS.get(
+            operation.category_kind or "", operation.category_kind or ""
+        )
         sign = "+" if operation.category_kind == "income" else "-"
         print(
             f"{operation.operation_id:>4}  {operation.operation_date:<12} "
@@ -60,7 +54,7 @@ def _print_operations(operations: list[Operation]) -> None:
 
 def _print_categories(categories: list[Category]) -> None:
     if not categories:
-        print("Категории не найдены.")
+        print("Типы не найдены.")
         return
     print(f"\n{'ID':>4}  {'Тип':<8} Название")
     print("-" * 40)
@@ -76,11 +70,11 @@ def _choose_category(kind: str | None = None) -> int | None:
     _print_categories(categories)
     if not categories:
         return None
-    category_id = _read_int("ID категории: ")
+    category_id = _read_int("ID типа: ")
     if category_id is None:
         return None
     if not any(item.category_id == category_id for item in categories):
-        print("Категория с таким ID не найдена")
+        print("Тип с таким ID не найден")
         return None
     return category_id
 
@@ -129,13 +123,13 @@ def _categories_menu(user: User) -> None:
 
 def _operations_menu(user: User) -> None:
     while True:
-        print("\n===== Операции =====")
+        print("\n===== Пункты доходов и расходов =====")
         print("1. Показать все")
         print("2. Показать доходы")
         print("3. Показать расходы")
         print("4. Добавить")
         print("5. Изменить сумму")
-        print("6. Изменить операцию")
+        print("6. Изменить пункт")
         print("7. Удалить")
         print("0. Назад")
         choice = _prompt("Выберите действие: ")
@@ -154,15 +148,15 @@ def _operations_menu(user: User) -> None:
                         operation = finance.add_operation(
                             user, category_id, amount, operation_date, description
                         )
-                        print(f"Операция #{operation.operation_id} добавлена")
+                        print(f"Пункт #{operation.operation_id} добавлен")
             elif choice == "5":
-                operation_id = _read_int("ID операции: ")
+                operation_id = _read_int("ID пункта: ")
                 amount = _read_float("Новая сумма: ")
                 if operation_id is not None and amount is not None:
                     finance.update_amount(user, operation_id, amount)
                     print("Сумма обновлена")
             elif choice == "6":
-                operation_id = _read_int("ID операции: ")
+                operation_id = _read_int("ID пункта: ")
                 if operation_id is not None:
                     current = next(
                         (
@@ -173,7 +167,7 @@ def _operations_menu(user: User) -> None:
                         None,
                     )
                     if current is None:
-                        print("Операция не найдена")
+                        print("Пункт не найден")
                         continue
                     category_id = _choose_category()
                     amount = _read_float(f"Сумма [{current.amount}]: ")
@@ -188,12 +182,12 @@ def _operations_menu(user: User) -> None:
                             operation_date or current.operation_date,
                             description or current.description,
                         )
-                        print("Операция обновлена")
+                        print("Пункт обновлён")
             elif choice == "7":
-                operation_id = _read_int("ID операции: ")
+                operation_id = _read_int("ID пункта: ")
                 if operation_id is not None:
                     finance.delete_operation(user, operation_id)
-                    print("Операция удалена")
+                    print("Пункт удалён")
             elif choice == "0":
                 return
             else:
@@ -273,7 +267,8 @@ def _users_menu() -> None:
             print(f"Ошибка: {error}")
 
 
-def _view_menu(user: User) -> None:
+def viewer_menu(user: User) -> None:
+    """Меню сотрудника: только просмотр, отчёты и экспорт."""
     while True:
         print(f"\n===== Просмотр ({user.role_name}) =====")
         print("1. Список доходов и расходов")
@@ -293,7 +288,8 @@ def _view_menu(user: User) -> None:
             print("Неизвестный пункт меню")
 
 
-def _editor_menu(user: User) -> None:
+def editor_menu(user: User) -> None:
+    """Меню администратора и руководителя."""
     while True:
         print(f"\n===== Главное меню ({user.role_name}: {user.full_name}) =====")
         print("1. Типы доходов и расходов")
@@ -319,53 +315,3 @@ def _editor_menu(user: User) -> None:
             return
         else:
             print("Неизвестный пункт меню")
-
-
-def login_menu() -> None:
-    """Авторизация и регистрация сотрудника."""
-    while True:
-        print("\n===== MoneyOrgTrack =====")
-        print("1. Вход в систему")
-        print("2. Регистрация сотрудника")
-        print("0. Выход")
-        choice = _prompt("Выберите действие: ")
-
-        if choice == "1":
-            login = _prompt("Логин: ")
-            password = _prompt("Пароль: ")
-            user = authenticate(login, password)
-            if user is None:
-                print("Неверный логин или пароль")
-                continue
-            print(f"Здравствуйте, {user.full_name}!")
-            if user.role_name == EMPLOYEE:
-                _view_menu(user)
-            elif user.role_name in {ADMIN, MANAGER}:
-                _editor_menu(user)
-            else:
-                print("У пользователя не назначена роль")
-        elif choice == "2":
-            try:
-                login = _prompt("Логин: ")
-                password = _prompt("Пароль: ")
-                full_name = _prompt("ФИО: ")
-                register(login, password, full_name, EMPLOYEE)
-                print("Сотрудник зарегистрирован. Теперь выполните вход.")
-            except AuthError as error:
-                print(f"Ошибка: {error}")
-        elif choice == "0":
-            return
-        else:
-            print("Неизвестный пункт меню")
-
-
-def run() -> None:
-    """Запуск интерактивного приложения."""
-    initialize_database()
-    login_menu()
-
-
-def run_export() -> None:
-    """Экспорт данных без интерактивного меню."""
-    initialize_database()
-    _do_export()

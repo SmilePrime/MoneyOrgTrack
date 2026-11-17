@@ -13,7 +13,7 @@ from ..repositories import (
     operation_log_repository,
     operation_repository,
 )
-from .auth import ADMIN, MANAGER
+from .auth_service import ADMIN, MANAGER
 
 _EDIT_ROLES = {ADMIN, MANAGER}
 
