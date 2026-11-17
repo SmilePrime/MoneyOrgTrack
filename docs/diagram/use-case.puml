@@ -1,38 +1,53 @@
-@startuml 
+@startuml
+title MoneyOrgTrack — диаграмма вариантов использования
+
 left to right direction
 skinparam packageStyle rectangle
 
-actor "руководитель" as manager
-actor "сотрудник" as employee
-actor "администратор" as admin
+actor "Администратор" as admin
+actor "Руководитель" as manager
+actor "Сотрудник" as employee
 
-usecase "Удалить пользователя" as UC9
-usecase "Добавить пользователя" as UC8
-usecase "Вход систему" as UC7
-usecase "Вход в систему" as UC10
-usecase "Просмотр списка доходов" as UC1
-usecase "Просмотр списка расходов" as UC2
-usecase "Изменение суммы доходов/расходов" as UC3
-usecase "Добавление/\nУдаление пункта доходов" as UC4
-usecase "Расчет доходов\nЗа месяц" as UC5
-usecase "Сохранение информации" as UC6
-usecase "Вход в систему" as UC11
+rectangle "MoneyOrgTrack" {
+    usecase "Вход в систему" as UC_LOGIN
+    usecase "Добавить пользователя" as UC_ADD_USER
+    usecase "Удалить пользователя" as UC_DELETE_USER
+    usecase "Просмотр списка доходов" as UC_INCOMES
+    usecase "Просмотр списка расходов" as UC_EXPENSES
+    usecase "Добавление / удаление\nпункта доходов" as UC_INCOME_ITEM
+    usecase "Добавление / удаление\nпункта расходов" as UC_EXPENSE_ITEM
+    usecase "Изменение суммы\nдоходов / расходов" as UC_CHANGE_AMOUNT
+    usecase "Расчёт доходов за месяц" as UC_REPORT
+    usecase "Сохранение изменений" as UC_SAVE
+    usecase "Экспорт данных" as UC_EXPORT
+}
 
-admin -- UC11
-UC11 -- UC9
-UC11 -- UC8 
+admin --> UC_LOGIN
+admin --> UC_ADD_USER
+admin --> UC_DELETE_USER
+admin --> UC_INCOMES
+admin --> UC_EXPENSES
+admin --> UC_REPORT
+admin --> UC_EXPORT
 
-manager -- UC7
-UC7 -- UC1
-UC7 -- UC2
-UC7 -- UC3
-UC7 -- UC4
-UC7 -- UC5
-UC7 -- UC6
+manager --> UC_LOGIN
+manager --> UC_INCOMES
+manager --> UC_EXPENSES
+manager --> UC_INCOME_ITEM
+manager --> UC_EXPENSE_ITEM
+manager --> UC_CHANGE_AMOUNT
+manager --> UC_REPORT
+manager --> UC_SAVE
+manager --> UC_EXPORT
 
-employee -- UC10
-UC10 -- UC1
-UC10 -- UC2
-UC10 -- UC5
+employee --> UC_LOGIN
+employee --> UC_INCOMES
+employee --> UC_EXPENSES
+employee --> UC_REPORT
+employee --> UC_EXPORT
+
+UC_INCOME_ITEM ..> UC_SAVE : <<include>>
+UC_EXPENSE_ITEM ..> UC_SAVE : <<include>>
+UC_CHANGE_AMOUNT ..> UC_SAVE : <<include>>
 
 @enduml

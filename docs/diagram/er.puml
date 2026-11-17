@@ -1,0 +1,43 @@
+@startuml
+title MoneyOrgTrack — ER-диаграмма базы данных
+
+hide circle
+skinparam linetype ortho
+
+entity ROLES {
+  * role_id : INTEGER <<PK>>
+  --
+  * name : TEXT <<UNIQUE>>
+}
+
+entity USERS {
+  * user_id : INTEGER <<PK>>
+  --
+  * login : TEXT <<UNIQUE>>
+  * password_hash : TEXT
+  * full_name : TEXT
+  * role_id : INTEGER <<FK>>
+}
+
+entity CATEGORIES {
+  * category_id : INTEGER <<PK>>
+  --
+  * name : TEXT <<UNIQUE>>
+  * kind : TEXT
+}
+
+entity OPERATIONS {
+  * operation_id : INTEGER <<PK>>
+  --
+  * category_id : INTEGER <<FK>>
+  * amount : REAL
+  * operation_date : TEXT
+  * description : TEXT
+  * created_by : INTEGER <<FK>>
+}
+
+ROLES ||--o{ USERS : "назначает роль"
+USERS ||--o{ OPERATIONS : "создаёт"
+CATEGORIES ||--o{ OPERATIONS : "классифицирует"
+
+@enduml

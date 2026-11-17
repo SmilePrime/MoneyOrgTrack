@@ -14,6 +14,12 @@ venv/
 .ruff_cache/
 .mypy_cache/
 
+# Runtime data and generated exports
+data/
+*.db
+*.db-journal
+out/
+
 # IDE
 .vscode/
 .idea/
