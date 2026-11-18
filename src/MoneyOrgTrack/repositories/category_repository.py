@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..database import get_connection
+from ..database import get_connection, get_last_insert_id
 from ..models import ItemType
 
 
